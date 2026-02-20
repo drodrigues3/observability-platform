@@ -59,13 +59,15 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: poetry run pytest tests/ -v --tb=short
 
-  build-images:
-    name: Build Docker Image (${{ matrix.app }})
+  build-and-scan:
+    name: Build & Trivy Scan (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: lint-python
+    needs: [lint-python, test-python]
     strategy:
       matrix:
         app: [workload-simulator, stream-processor, metrics-bridge]
+    permissions:
+      security-events: write   # upload SARIF to GitHub Security tab
     steps:
       - uses: actions/checkout@v4
 
@@ -77,9 +79,36 @@ jobs:
         with:
           context: apps/${{ matrix.app }}
           push: false
+          load: true
           tags: ${{ matrix.app }}:ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.app }}:ci-${{ github.sha }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Trivy SARIF report
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.app }}:ci-${{ github.sha }}
+          format: sarif
+          output: trivy-${{ matrix.app }}.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.app }}.sarif
+          category: trivy-${{ matrix.app }}
 
   lint-helm:
     name: Lint Helm Charts

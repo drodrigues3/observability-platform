@@ -104,10 +104,12 @@ class TestTrafficDropRule:
     def test_baseline_ema_update(self):
         rule = TrafficDropRule(threshold=0.5, window_size=60)
         window = make_window([100] * 60)
-        window.baseline_rps = 1.0
+        # Set baseline different from actual RPS (60/60=1.0) so EMA moves
+        window.baseline_rps = 2.0
         rule.evaluate("api-service", window)
-        # baseline should be updated via EMA: 1.0 * 0.95 + current * 0.05
-        assert window.baseline_rps != 1.0
+        # baseline should be updated via EMA: 2.0 * 0.95 + 1.0 * 0.05 = 1.95
+        assert window.baseline_rps != 2.0
+        assert window.baseline_rps == pytest.approx(1.95)
 
     def test_empty_window(self):
         rule = TrafficDropRule(threshold=0.5, window_size=60)

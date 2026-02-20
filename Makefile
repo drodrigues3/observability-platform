@@ -2,6 +2,7 @@
 # Observability Platform — Makefile
 # ============================================================================
 # Usage:
+#   make setup            Check & install all system tools + Python deps
 #   make install          Install all Python dependencies (poetry)
 #   make test             Run all unit tests
 #   make test-cov         Run all tests with coverage report
@@ -29,6 +30,13 @@ HELM_RELEASE     := obs
 HELM_CHART       := ./helm/observability-platform
 MONITORING_NS    := monitoring
 OBSERVABILITY_NS := observability
+
+# ---------------------------------------------------------------------------
+# Setup (check & install system dependencies)
+# ---------------------------------------------------------------------------
+.PHONY: setup
+setup: ## Check and install all required tools (Python, Poetry, Docker, kind, kubectl, Helm)
+	@bash scripts/setup.sh
 
 # ---------------------------------------------------------------------------
 # Install

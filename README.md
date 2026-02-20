@@ -2,7 +2,7 @@
 
 A production-grade, self-hosted observability stack showcasing SRE best practices. Python microservices simulate realistic workloads, Kafka provides durable event streaming, and the full stack deploys on Kubernetes via production-quality Helm charts with HPA, PDB, and comprehensive Prometheus/Grafana monitoring.
 
-**Stack:** Python 3.11 · Apache Kafka · Kubernetes · Helm · Prometheus · Grafana · Alertmanager
+**Stack:** Python 3.11 · Apache Kafka · Kubernetes · Helm · Prometheus · Grafana · Alertmanager · Chainguard Distroless · Trivy
 
 ---
 
@@ -55,7 +55,8 @@ A production-grade, self-hosted observability stack showcasing SRE best practice
 | Anomaly Detection | Sliding window P99 and error rate rules with consecutive violation tracking |
 | Zero-Downtime Deploys | `maxUnavailable: 0` rolling updates + PodDisruptionBudgets |
 | Auto-Scaling | HPA on CPU (upgrade path to KEDA + Kafka lag) |
-| Security | Non-root containers, read-only filesystem, no automount SA tokens |
+| Container Security | Chainguard distroless images (0 CVE), non-root by default, no shell/package manager, Trivy gate in CI |
+| Cluster Security | Read-only filesystem, no automount SA tokens, network policies, RBAC |
 | IaC | All config version-controlled in Helm charts with dev/prod value overlays |
 | Runbooks | Per-alert markdown runbooks with triage steps and escalation paths |
 
@@ -86,25 +87,42 @@ observability-platform/
 │   ├── slos/                   # SLO definitions (api-service.yaml)
 │   └── adr/                    # Architecture Decision Records
 ├── tests/                      # Smoke tests (end-to-end pipeline validation)
-├── scripts/                    # load_test.py
+├── scripts/
+│   ├── setup.sh                # Idempotent environment setup (check & install all tools)
+│   └── load_test.py            # Load testing script
+├── .github/workflows/ci.yaml  # CI pipeline (lint, test, build, Trivy scan)
+├── .gitignore
 ├── Makefile                    # Build, test, deploy, and clean automation
 └── kind-config.yaml            # Local cluster configuration
 ```
+
+## Prerequisites
+
+All system dependencies can be installed automatically:
+
+```bash
+make setup    # Checks and installs: Python 3.11+, Poetry, Docker, kind, kubectl, Helm
+```
+
+The script is idempotent — it skips tools already installed. Supports Ubuntu/Debian (WSL2) and macOS.
 
 ## Quick Start
 
 ### Using Makefile (recommended)
 
-From zero to a running platform in 3 commands:
+From zero to a running platform in 4 commands:
 
 ```bash
-# 1. Install Python dependencies
-make install
+# 1. Install system tools + Python dependencies
+make setup
 
 # 2. Run tests to verify everything works
 make test
 
-# 3. Build images, create cluster, and deploy the full stack
+# 3. Build distroless Docker images
+make build
+
+# 4. Create cluster and deploy the full stack
 make run
 ```
 
@@ -121,6 +139,7 @@ make port-forward
 
 | Target | Description |
 |--------|-------------|
+| `make setup` | **Check and install all system tools + Python deps** |
 | `make install` | Install all Python dependencies (Poetry) |
 | `make test` | Run unit tests for all 3 apps |
 | `make test-cov` | Run tests with coverage report (60% min) |
@@ -221,6 +240,25 @@ python tests/smoke_test.py
 - [HighErrorRate](runbooks/high-error-rate.md)
 - [ErrorBudgetBurn](runbooks/error-budget-burn.md)
 
+## Container Security
+
+All application images target **0 known CVEs** using a multi-stage build strategy:
+
+| Stage | Image | Purpose |
+|-------|-------|---------|
+| Builder | `cgr.dev/chainguard/python:latest-dev` | Has pip, shell, and build tools for installing dependencies |
+| Final | `cgr.dev/chainguard/python:latest` | Distroless — no shell, no package manager, nonroot by default |
+
+**Why Chainguard Distroless:**
+- Images are rebuilt daily with the latest security patches
+- No OS-level packages to accumulate CVEs (no apt, no bash, no coreutils)
+- Runs as `nonroot` (UID 65532) by default — no user creation needed
+- Minimal attack surface: only the Python interpreter and application code
+
+**CI enforcement:** Every image is scanned by [Trivy](https://trivy.dev/) in the GitHub Actions pipeline. The build **fails** on any CRITICAL or HIGH CVE. Results are uploaded to the GitHub Security tab as SARIF reports.
+
+See [ADR-003](docs/adr/ADR-003-chainguard-distroless-images.md) for the full decision record.
+
 ## Testing
 
 ```bash
@@ -250,10 +288,23 @@ Tear down all resources (Helm releases, kind cluster, Docker images):
 make clean
 ```
 
+## CI Pipeline
+
+The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs on every push and PR:
+
+| Job | What it does |
+|-----|-------------|
+| **Lint Python** | `ruff check` + `mypy` per app |
+| **Unit Tests** | `pytest` per app |
+| **Build & Trivy Scan** | Build distroless images, fail on CRITICAL/HIGH CVE, upload SARIF |
+| **Lint Helm** | `helm lint` + template validation |
+| **Validate K8s** | YAML syntax check on all `k8s/` manifests |
+
 ## Architecture Decisions
 
 - [ADR-001: Kafka over Prometheus Remote Write](docs/adr/ADR-001-kafka-over-remote-write.md)
 - [ADR-002: CPU HPA vs KEDA Kafka Lag](docs/adr/ADR-002-consumer-lag-vs-cpu-hpa.md)
+- [ADR-003: Chainguard Distroless Images](docs/adr/ADR-003-chainguard-distroless-images.md)
 
 ## Future Improvements
 
@@ -261,4 +312,4 @@ make clean
 - Chaos engineering script (random pod kills, network latency injection)
 - Distributed tracing with OpenTelemetry + Tempo
 - Multi-cluster federation with Thanos
-- GitHub Actions CD pipeline for automated deployment
+- CD pipeline for automated deployment to staging/production
