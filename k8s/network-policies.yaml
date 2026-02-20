@@ -1,0 +1,82 @@
+# Allow workload-simulator to reach Kafka only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: workload-simulator-egress
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app: workload-simulator
+  policyTypes:
+    - Egress
+  egress:
+    # Kafka brokers
+    - ports:
+        - protocol: TCP
+          port: 9092
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kafka
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+---
+# Allow stream-processor to reach Kafka
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stream-processor-egress
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app: stream-processor
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 9092
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kafka
+    - ports:
+        - protocol: UDP
+          port: 53
+---
+# Allow metrics-bridge to receive from Prometheus (monitoring ns) and reach Kafka
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metrics-bridge-policy
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app: metrics-bridge
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 9092
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kafka
+    - ports:
+        - protocol: UDP
+          port: 53

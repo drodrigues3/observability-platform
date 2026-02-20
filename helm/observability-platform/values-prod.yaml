@@ -1,0 +1,34 @@
+# Production overrides — HA configuration with persistent storage
+kafka:
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 50Gi
+  zookeeper:
+    replicaCount: 3
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 30d
+      replicas: 2
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: fast-ssd
+            resources:
+              requests:
+                storage: 100Gi
+  grafana:
+    replicas: 2
+    persistence:
+      enabled: true
+      size: 5Gi
+    ingress:
+      enabled: true
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+  alertmanager:
+    alertmanagerSpec:
+      replicas: 3

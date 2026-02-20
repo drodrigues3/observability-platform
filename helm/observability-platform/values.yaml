@@ -1,0 +1,74 @@
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# ---- Kafka (Bitnami subchart) ----
+kafka:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 8Gi
+  zookeeper:
+    enabled: true
+    replicaCount: 1
+  # Topics created automatically
+  provisioning:
+    enabled: true
+    topics:
+      - name: metrics.raw
+        partitions: 3
+        replicationFactor: 1
+      - name: logs.raw
+        partitions: 2
+        replicationFactor: 1
+      - name: alerts.fired
+        partitions: 1
+        replicationFactor: 1
+
+# ---- kube-prometheus-stack ----
+kube-prometheus-stack:
+  enabled: true
+  grafana:
+    enabled: true
+    adminPassword: "observability123"
+    persistence:
+      enabled: false
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+      datasources:
+        enabled: true
+    grafana.ini:
+      analytics:
+        check_for_updates: false
+  prometheus:
+    prometheusSpec:
+      # Allow scraping ServiceMonitors from any namespace
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      retention: 15d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+  alertmanager:
+    enabled: true
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: ["alertname", "service"]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+        receiver: "null"
+      receivers:
+        - name: "null"

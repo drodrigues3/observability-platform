@@ -1,0 +1,180 @@
+{
+  "annotations": { "list": [] },
+  "description": "SLO Dashboard: Error budget tracking, burn rates, and SLI trends",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Availability SLO (99.9% target)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percentunit",
+          "min": 0.99,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.999 },
+              { "color": "green", "value": 0.9995 }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "1 - (sum(rate(workload_errors_total{service=~\"$service\"}[30d])) / sum(rate(workload_requests_total{service=~\"$service\"}[30d])))",
+          "legendFormat": "Availability",
+          "refId": "A"
+        }
+      ],
+      "title": "Current Availability (30d)",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.25 },
+              { "color": "green", "value": 0.5 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 1 },
+      "id": 3,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "(0.001 - sum(rate(workload_errors_total{service=~\"$service\"}[30d])) / sum(rate(workload_requests_total{service=~\"$service\"}[30d]))) / 0.001",
+          "legendFormat": "Budget Remaining",
+          "refId": "A"
+        }
+      ],
+      "title": "Error Budget Remaining (30d)",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 14 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "(sum(rate(workload_errors_total{service=~\"$service\"}[1h])) by (service) / sum(rate(workload_requests_total{service=~\"$service\"}[1h])) by (service)) / 0.001",
+          "legendFormat": "1h burn - {{service}}",
+          "refId": "A"
+        },
+        {
+          "expr": "(sum(rate(workload_errors_total{service=~\"$service\"}[6h])) by (service) / sum(rate(workload_requests_total{service=~\"$service\"}[6h])) by (service)) / 0.001",
+          "legendFormat": "6h burn - {{service}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Error Budget Burn Rate (1h vs 6h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum(rate(workload_errors_total{service=~\"$service\"}[$__rate_interval])) by (service) / sum(rate(workload_requests_total{service=~\"$service\"}[$__rate_interval])) by (service)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "SLI: Error Rate Trend",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": ["observability", "slo", "error-budget"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(workload_requests_total, service)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": "label_values(workload_requests_total, service)",
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SLO Dashboard",
+  "uid": "slo-dashboard",
+  "version": 1
+}

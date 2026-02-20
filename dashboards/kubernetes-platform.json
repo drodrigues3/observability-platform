@@ -1,0 +1,181 @@
+{
+  "annotations": { "list": [] },
+  "description": "Kubernetes Platform: Pod health, HPA scaling events, PDB status",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 10,
+      "title": "Pod Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "sum(kube_pod_status_phase{namespace=~\"observability|monitoring|kafka\", phase=\"Running\"}) by (namespace)",
+          "legendFormat": "{{namespace}} running",
+          "refId": "A"
+        }
+      ],
+      "title": "Running Pods by Namespace",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"observability\"}[15m])) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Restarts (15m window)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 20,
+      "title": "HPA Scaling",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"observability\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} current",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"observability\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} desired",
+          "refId": "B"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"observability\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} max",
+          "refId": "C"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_spec_min_replicas{namespace=\"observability\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} min",
+          "refId": "D"
+        }
+      ],
+      "title": "HPA: Current vs Desired vs Min/Max Replicas",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 30,
+      "title": "Resource Usage",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "percentunit",
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"observability\",container!=\"\"}[$__rate_interval])) by (container) / sum(kube_pod_container_resource_requests{namespace=\"observability\",resource=\"cpu\",container!=\"\"}) by (container)",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Usage vs Request",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"observability\",container!=\"\"}) by (container)",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Working Set",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": ["observability", "kubernetes", "hpa", "sre"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Kubernetes Platform",
+  "uid": "kubernetes-platform",
+  "version": 1
+}

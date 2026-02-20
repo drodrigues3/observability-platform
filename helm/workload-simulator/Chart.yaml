@@ -1,0 +1,6 @@
+apiVersion: v2
+name: workload-simulator
+description: Helm chart for the Workload Simulator service
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

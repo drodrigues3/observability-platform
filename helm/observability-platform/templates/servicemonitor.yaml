@@ -1,0 +1,25 @@
+{{- if index .Values "kube-prometheus-stack" "enabled" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metrics-bridge
+  namespace: monitoring
+  labels:
+    app: metrics-bridge
+    release: {{ .Release.Name }}
+    app.kubernetes.io/part-of: observability-platform
+spec:
+  # Select the metrics-bridge Service in the observability namespace
+  selector:
+    matchLabels:
+      app: metrics-bridge
+  namespaceSelector:
+    matchNames:
+      - observability
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: false
+{{- end }}

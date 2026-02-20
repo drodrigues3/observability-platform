@@ -1,0 +1,32 @@
+== Real-Time Observability Platform ==
+
+Your observability stack has been deployed successfully!
+
+1. Get Grafana admin password:
+   kubectl get secret --namespace {{ .Release.Namespace }} {{ .Release.Name }}-grafana \
+     -o jsonpath="{.data.admin-password}" | base64 --decode; echo
+
+2. Access Grafana (port-forward):
+   kubectl port-forward svc/{{ .Release.Name }}-grafana 3000:80 -n monitoring
+   Open: http://localhost:3000
+
+3. Access Prometheus:
+   kubectl port-forward svc/{{ .Release.Name }}-kube-prometheus-stack-prometheus 9090:9090 -n monitoring
+   Open: http://localhost:9090
+
+4. Access Alertmanager:
+   kubectl port-forward svc/{{ .Release.Name }}-kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
+
+5. Check metrics-bridge:
+   kubectl port-forward svc/metrics-bridge 8080:8080 -n observability
+   curl http://localhost:8080/metrics
+
+6. Check pipeline health:
+   kubectl get pods -n observability
+   kubectl get pods -n monitoring
+   kubectl get hpa -n observability
+
+7. Run smoke tests:
+   cd tests && python smoke_test.py
+
+Happy monitoring!

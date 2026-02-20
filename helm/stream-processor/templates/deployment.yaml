@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "stream-processor.fullname" . }}
+  labels:
+    {{- include "stream-processor.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "stream-processor.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "stream-processor.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "stream-processor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: stream-processor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            {{- range $key, $val := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "from processor.config import Config; Config()"
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: stream-processor
+description: Helm chart for the Stream Processor service
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

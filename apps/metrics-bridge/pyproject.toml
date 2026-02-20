@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "metrics-bridge"
+version = "0.1.0"
+description = "Bridges Kafka metrics to Prometheus /metrics endpoint"
+authors = ["SRE Platform Team"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.108.0"
+uvicorn = {extras = ["standard"], version = "^0.25.0"}
+confluent-kafka = "^2.3.0"
+prometheus-client = "^0.19.0"
+pydantic-settings = "^2.1.0"
+structlog = "^23.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+httpx = "^0.26.0"
+ruff = "^0.1.0"
+mypy = "^1.7.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

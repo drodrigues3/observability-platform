@@ -1,0 +1,64 @@
+replicaCount: 2
+
+image:
+  repository: stream-processor
+  tag: local
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+env:
+  KAFKA_BROKERS: "kafka:9092"
+  METRICS_TOPIC: "metrics.raw"
+  ALERTS_TOPIC: "alerts.fired"
+  CONSUMER_GROUP: "stream-processor-group"
+  WINDOW_SIZE_SECONDS: "60"
+  LATENCY_P99_THRESHOLD_MS: "500"
+  ERROR_RATE_THRESHOLD: "0.05"
+  ALERT_COOLDOWN_SECONDS: "300"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - stream-processor
+          topologyKey: kubernetes.io/hostname

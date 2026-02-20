@@ -1,0 +1,65 @@
+replicaCount: 1
+
+image:
+  repository: metrics-bridge
+  tag: local
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+env:
+  KAFKA_BROKERS: "kafka:9092"
+  METRICS_TOPIC: "metrics.raw"
+  CONSUMER_GROUP: "metrics-bridge-group"
+  SERVER_HOST: "0.0.0.0"
+  SERVER_PORT: "8080"
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5

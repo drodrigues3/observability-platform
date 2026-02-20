@@ -1,0 +1,151 @@
+{{- if index .Values "kube-prometheus-stack" "enabled" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: observability-platform-alerts
+  namespace: monitoring
+  labels:
+    release: {{ .Release.Name }}
+    app.kubernetes.io/part-of: observability-platform
+spec:
+  groups:
+
+    # ---- Golden Signal: Latency ----
+    - name: workload.latency
+      interval: 30s
+      rules:
+        - alert: HighLatencyP99
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(workload_request_latency_ms_bucket[5m])) by (service, le)
+            ) > 500
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "High P99 latency for {{ "{{" }} $labels.service {{ "}}" }}"
+            description: >-
+              P99 latency is {{ "{{" }} $value | humanize {{ "}}" }}ms for service
+              {{ "{{" }} $labels.service {{ "}}" }}, exceeding 500ms threshold.
+            runbook_url: "https://github.com/your-org/observability-platform/blob/main/runbooks/high-latency-p99.md"
+            dashboard_url: "http://grafana:3000/d/golden-signals"
+
+    # ---- Golden Signal: Errors ----
+    - name: workload.errors
+      interval: 30s
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(workload_errors_total[3m])) by (service)
+              /
+              sum(rate(workload_requests_total[3m])) by (service)
+            ) > 0.05
+          for: 3m
+          labels:
+            severity: critical
+            team: sre
+          annotations:
+            summary: "High error rate for {{ "{{" }} $labels.service {{ "}}" }}"
+            description: >-
+              Error rate is {{ "{{" }} $value | humanizePercentage {{ "}}" }} for service
+              {{ "{{" }} $labels.service {{ "}}" }}, exceeding 5% threshold for 3 minutes.
+            runbook_url: "https://github.com/your-org/observability-platform/blob/main/runbooks/high-error-rate.md"
+            dashboard_url: "http://grafana:3000/d/golden-signals"
+
+    # ---- Kafka Consumer Lag ----
+    - name: kafka.consumer
+      interval: 60s
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: |
+            kafka_consumer_group_lag > 1000
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "Kafka consumer lag high for group {{ "{{" }} $labels.consumergroup {{ "}}" }}"
+            description: >-
+              Consumer group {{ "{{" }} $labels.consumergroup {{ "}}" }} lag is
+              {{ "{{" }} $value {{ "}}" }} messages on topic {{ "{{" }} $labels.topic {{ "}}" }},
+              exceeding 1000 message threshold for 10 minutes.
+            runbook_url: "https://github.com/your-org/observability-platform/blob/main/runbooks/kafka-consumer-lag.md"
+            dashboard_url: "http://grafana:3000/d/kafka-consumer-lag"
+
+    # ---- Kubernetes Pod Health ----
+    - name: kubernetes.pods
+      interval: 60s
+      rules:
+        - alert: PodRestartingFrequently
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="observability"}[15m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "Pod {{ "{{" }} $labels.pod {{ "}}" }} restarting frequently"
+            description: >-
+              Pod {{ "{{" }} $labels.pod {{ "}}" }} in namespace {{ "{{" }} $labels.namespace {{ "}}" }}
+              has restarted {{ "{{" }} $value {{ "}}" }} times in the last 15 minutes.
+            runbook_url: "https://github.com/your-org/observability-platform/blob/main/runbooks/pod-restarting.md"
+            dashboard_url: "http://grafana:3000/d/kubernetes-platform"
+
+    # ---- SLO: Error Budget Burn Rate (multiburn, multiwindow) ----
+    - name: slo.errorbudget
+      interval: 60s
+      rules:
+        # Recording rules for efficiency
+        - record: job:workload_request_error_rate:ratio_rate5m
+          expr: |
+            sum(rate(workload_errors_total[5m])) by (service)
+            /
+            sum(rate(workload_requests_total[5m])) by (service)
+
+        - record: job:workload_request_error_rate:ratio_rate1h
+          expr: |
+            sum(rate(workload_errors_total[1h])) by (service)
+            /
+            sum(rate(workload_requests_total[1h])) by (service)
+
+        - record: job:workload_request_error_rate:ratio_rate6h
+          expr: |
+            sum(rate(workload_errors_total[6h])) by (service)
+            /
+            sum(rate(workload_requests_total[6h])) by (service)
+
+        # Fast burn: 14x rate over 1h window — budget exhausted in < 1 hour
+        - alert: ErrorBudgetBurnRateFast
+          expr: |
+            job:workload_request_error_rate:ratio_rate1h > (14 * 0.001)
+          for: 5m
+          labels:
+            severity: critical
+            team: sre
+          annotations:
+            summary: "Fast error budget burn for {{ "{{" }} $labels.service {{ "}}" }}"
+            description: >-
+              Service {{ "{{" }} $labels.service {{ "}}" }} is burning its error budget at
+              {{ "{{" }} $value | humanizePercentage {{ "}}" }} (14x fast burn rate).
+              At this rate, the monthly budget will be exhausted in less than 1 hour.
+            runbook_url: "https://github.com/your-org/observability-platform/blob/main/runbooks/error-budget-burn.md"
+            dashboard_url: "http://grafana:3000/d/slo-dashboard"
+
+        # Slow burn: 3x rate over 6h window — budget exhausted in ~5 days
+        - alert: ErrorBudgetBurnRateSlow
+          expr: |
+            job:workload_request_error_rate:ratio_rate6h > (3 * 0.001)
+          for: 15m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "Slow error budget burn for {{ "{{" }} $labels.service {{ "}}" }}"
+            description: >-
+              Service {{ "{{" }} $labels.service {{ "}}" }} is burning its error budget at 3x
+              the allowed rate over the last 6 hours.
+            runbook_url: "https://github.com/your-org/observability-platform/blob/main/runbooks/error-budget-burn.md"
+            dashboard_url: "http://grafana:3000/d/slo-dashboard"
+{{- end }}

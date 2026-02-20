@@ -1,0 +1,90 @@
+replicaCount: 2
+
+image:
+  repository: workload-simulator
+  tag: local
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+# Security: run as non-root with read-only filesystem
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+env:
+  KAFKA_BROKERS: "kafka:9092"
+  METRICS_TOPIC: "metrics.raw"
+  LOGS_TOPIC: "logs.raw"
+  EVENTS_PER_SECOND: "10"
+  ERROR_RATE: "0.02"
+  LATENCY_SPIKE_PROBABILITY: "0.05"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+livenessProbe:
+  exec:
+    command:
+      - python
+      - -c
+      - "import confluent_kafka; print('ok')"
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  exec:
+    command:
+      - python
+      - -c
+      - "from simulator.config import Config; Config()"
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+
+nodeSelector: {}
+tolerations: []
+
+# Spread replicas across nodes for resilience
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - workload-simulator
+          topologyKey: kubernetes.io/hostname

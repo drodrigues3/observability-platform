@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "workload-simulator"
+version = "0.1.0"
+description = "Simulates realistic workloads and publishes metrics to Kafka"
+authors = ["SRE Platform Team"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+confluent-kafka = "^2.3.0"
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+faker = "^21.0.0"
+prometheus-client = "^0.19.0"
+structlog = "^23.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+ruff = "^0.1.0"
+mypy = "^1.7.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

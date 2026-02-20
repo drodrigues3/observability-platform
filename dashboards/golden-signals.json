@@ -1,0 +1,244 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "description": "Golden Signals: Latency, Traffic, Errors, Saturation for all workload services",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Latency",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 2,
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(workload_request_latency_ms_bucket{service=~\"$service\"}[$__rate_interval])) by (service, le))",
+          "legendFormat": "p50 - {{service}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(workload_request_latency_ms_bucket{service=~\"$service\"}[$__rate_interval])) by (service, le))",
+          "legendFormat": "p95 - {{service}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(workload_request_latency_ms_bucket{service=~\"$service\"}[$__rate_interval])) by (service, le))",
+          "legendFormat": "p99 - {{service}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Request Latency (P50/P95/P99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 3,
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(workload_requests_total{service=~\"$service\"}[$__rate_interval])) by (service)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Request Rate (RPS)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 10,
+      "title": "Errors",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "percentunit",
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum(rate(workload_errors_total{service=~\"$service\"}[$__rate_interval])) by (service) / sum(rate(workload_requests_total{service=~\"$service\"}[$__rate_interval])) by (service)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Error Rate (%)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum(increase(workload_errors_total{service=~\"$service\"}[$__rate_interval])) by (service, status_code)",
+          "legendFormat": "{{service}} - {{status_code}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Errors by Status Code",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 20,
+      "title": "Saturation",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "percentunit",
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "red", "value": 0.9 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"observability\",container!=\"\"}[$__rate_interval])) by (pod) / sum(kube_pod_container_resource_limits{namespace=\"observability\",resource=\"cpu\",container!=\"\"}) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Saturation (usage/limit)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "percentunit",
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"observability\",container!=\"\"}) by (pod) / sum(kube_pod_container_resource_limits{namespace=\"observability\",resource=\"memory\",container!=\"\"}) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Saturation (usage/limit)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": ["observability", "golden-signals", "sre"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(workload_requests_total, service)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": "label_values(workload_requests_total, service)",
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Golden Signals",
+  "uid": "golden-signals",
+  "version": 1
+}

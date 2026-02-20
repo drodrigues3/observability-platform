@@ -1,0 +1,32 @@
+service: api-service
+description: Core REST API serving user-facing requests
+team: sre-platform
+
+slos:
+  - name: availability
+    description: Service must successfully respond to >=99.9% of requests
+    target: 99.9
+    window: 30d
+    sli:
+      good_events: sum(rate(workload_requests_total{service="api-service",error="false"}[30d]))
+      total_events: sum(rate(workload_requests_total{service="api-service"}[30d]))
+      expression: 1 - (error_requests / total_requests)
+    error_budget_minutes_per_month: 43.2
+    alert_thresholds:
+      fast_burn: "14x  # 1h window — exhausts budget in < 1 hour"
+      slow_burn: "3x   # 6h window — exhausts budget in ~5 days"
+
+  - name: latency_p99
+    description: 99% of requests must complete within 500ms
+    target: 99.0
+    window: 30d
+    sli:
+      expression: histogram_quantile(0.99, rate(workload_request_latency_ms_bucket{service="api-service"}[5m])) < 500
+    error_budget_minutes_per_month: 432
+
+  - name: throughput
+    description: Service must handle at least 10 RPS under normal load
+    target: 99.0
+    window: 30d
+    sli:
+      expression: sum(rate(workload_requests_total{service="api-service"}[5m])) >= 10
