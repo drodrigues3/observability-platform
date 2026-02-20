@@ -36,7 +36,10 @@ class StreamProcessor:
 
     def _process_message(self, msg: Message) -> None:
         try:
-            payload = json.loads(msg.value().decode("utf-8"))
+            raw = msg.value()
+            if raw is None:
+                return
+            payload = json.loads(raw.decode("utf-8"))
             service = payload.get("service", "unknown")
             latency_ms = float(payload.get("latency_ms", 0))
             error = bool(payload.get("error", False))
@@ -67,10 +70,11 @@ class StreamProcessor:
                 msg = self._consumer.poll(timeout=self._config.consumer_timeout_ms / 1000)
                 if msg is None:
                     continue
-                if msg.error():
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                err = msg.error()
+                if err:
+                    if err.code() == KafkaError._PARTITION_EOF:  # type: ignore[attr-defined]
                         continue
-                    logger.error("Consumer error", error=msg.error())
+                    logger.error("Consumer error", error=err)
                     continue
                 self._process_message(msg)
                 # Manual offset commit after successful processing

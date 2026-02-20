@@ -1,4 +1,3 @@
-from collections import deque
 from unittest.mock import MagicMock, patch
 
 import pytest
