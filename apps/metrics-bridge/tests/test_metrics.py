@@ -1,15 +1,4 @@
-import pytest
-from prometheus_client import CollectorRegistry, Counter, Histogram, Gauge
-
 from bridge.metrics import record_metric_event
-
-
-@pytest.fixture(autouse=True)
-def clean_registry():
-    """Reset Prometheus collectors between tests by importing fresh references."""
-    import bridge.metrics as m
-    # Store original values from the samples to check increments
-    yield
 
 
 class TestRecordMetricEvent:
