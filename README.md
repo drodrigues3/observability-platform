@@ -87,12 +87,59 @@ observability-platform/
 │   └── adr/                    # Architecture Decision Records
 ├── tests/                      # Smoke tests (end-to-end pipeline validation)
 ├── scripts/                    # load_test.py
+├── Makefile                    # Build, test, deploy, and clean automation
 └── kind-config.yaml            # Local cluster configuration
 ```
 
 ## Quick Start
 
-From zero to running in 10 commands:
+### Using Makefile (recommended)
+
+From zero to a running platform in 3 commands:
+
+```bash
+# 1. Install Python dependencies
+make install
+
+# 2. Run tests to verify everything works
+make test
+
+# 3. Build images, create cluster, and deploy the full stack
+make run
+```
+
+Then access the dashboards:
+
+```bash
+# Port-forward Grafana (3000), Prometheus (9090), metrics-bridge (8080)
+make port-forward
+# Grafana:    http://localhost:3000 (admin / observability123)
+# Prometheus: http://localhost:9090
+```
+
+### All Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make install` | Install all Python dependencies (Poetry) |
+| `make test` | Run unit tests for all 3 apps |
+| `make test-cov` | Run tests with coverage report (60% min) |
+| `make lint` | Run ruff + mypy on all apps |
+| `make lint-helm` | Lint all Helm charts |
+| `make build` | Build Docker images for all apps |
+| `make cluster` | Create kind cluster + namespaces + RBAC + network policies |
+| `make deploy` | Update Helm deps, load images, deploy full stack |
+| `make run` | **Full setup from zero** (cluster + build + deploy) |
+| `make port-forward` | Port-forward Grafana, Prometheus, and metrics-bridge |
+| `make smoke-test` | Run end-to-end smoke tests |
+| `make load-test` | Spike to 100 RPS for 2 min |
+| `make clean` | **Tear down everything** (Helm releases, kind cluster, images) |
+| `make help` | Show all available targets |
+
+### Manual Setup (step-by-step)
+
+<details>
+<summary>Expand for manual commands without Make</summary>
 
 ```bash
 # 1. Create local Kubernetes cluster
@@ -139,6 +186,8 @@ kubectl port-forward svc/obs-kube-prometheus-stack-prometheus 9090:9090 -n monit
 python tests/smoke_test.py
 ```
 
+</details>
+
 ## Component Overview
 
 | Component | Language | Kafka Topics | Purpose |
@@ -172,16 +221,34 @@ python tests/smoke_test.py
 - [HighErrorRate](runbooks/high-error-rate.md)
 - [ErrorBudgetBurn](runbooks/error-budget-burn.md)
 
+## Testing
+
+```bash
+make test          # Run all unit tests
+make test-cov      # Run tests with coverage
+make lint          # Ruff + mypy
+make smoke-test    # End-to-end validation (requires a running cluster)
+```
+
 ## Load Testing
 
 Trigger HPA scaling and validate the platform handles load:
 
 ```bash
-# Spike to 100 RPS with 10% error rate for 2 minutes
+make load-test
+# or manually:
 python scripts/load_test.py --target-rps 100 --error-rate 0.1 --duration 120
 ```
 
 Watch the Grafana dashboards respond in real time.
+
+## Cleanup
+
+Tear down all resources (Helm releases, kind cluster, Docker images):
+
+```bash
+make clean
+```
 
 ## Architecture Decisions
 
