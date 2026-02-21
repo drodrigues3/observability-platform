@@ -1,9 +1,9 @@
 import time
 from collections import deque
-from typing import Optional
+from typing import Any, Optional, Union
 
 import structlog
-from confluent_kafka import Producer, KafkaException
+from confluent_kafka import KafkaException, Message, Producer
 
 from simulator.config import Config
 from simulator.models import MetricEvent, LogEvent
@@ -16,11 +16,11 @@ class KafkaProducerWrapper:
 
     def __init__(self, config: Config) -> None:
         self._config = config
-        self._dlq: deque = deque(maxlen=1000)
+        self._dlq: deque[MetricEvent] = deque(maxlen=1000)
         self._producer = self._create_producer()
 
     def _create_producer(self) -> Producer:
-        conf = {
+        conf: dict[str, Union[str, int, float, bool]] = {
             "bootstrap.servers": self._config.kafka_brokers,
             "acks": "all",
             "retries": self._config.producer_retry_max,
@@ -31,7 +31,7 @@ class KafkaProducerWrapper:
         }
         return Producer(conf)
 
-    def _delivery_callback(self, err, msg) -> None:
+    def _delivery_callback(self, err: Any, msg: Message) -> None:
         if err:
             logger.error(
                 "Message delivery failed",

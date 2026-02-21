@@ -35,8 +35,8 @@ class AlertEvent(BaseModel):
     service: str
     severity: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    labels: dict = Field(default_factory=dict)
-    annotations: dict = Field(default_factory=dict)
+    labels: dict[str, str] = Field(default_factory=dict)
+    annotations: dict[str, str] = Field(default_factory=dict)
     fingerprint: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     model_config = {"json_encoders": {datetime: lambda v: v.isoformat()}}

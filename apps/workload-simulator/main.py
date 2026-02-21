@@ -1,6 +1,8 @@
 import signal
-import threading
 import sys
+import threading
+from types import FrameType
+from typing import Optional
 
 import structlog
 
@@ -29,7 +31,7 @@ def main() -> None:
 
     stop_event = threading.Event()
 
-    def handle_signal(signum, frame) -> None:
+    def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
         logger.info("Received shutdown signal", signal=signum)
         stop_event.set()
 

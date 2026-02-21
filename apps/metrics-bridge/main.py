@@ -1,4 +1,6 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import structlog
 import uvicorn
@@ -26,7 +28,7 @@ consumer = MetricsBridgeConsumer(config)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     consumer.start()
     logger.info("Metrics bridge started", port=config.server_port)
     yield
@@ -43,7 +45,7 @@ app = FastAPI(
 
 
 @app.get("/metrics", response_class=Response)
-async def metrics():
+async def metrics() -> Response:
     """Prometheus metrics endpoint — scraped by Prometheus via ServiceMonitor."""
     return Response(
         content=generate_latest(),
@@ -52,13 +54,13 @@ async def metrics():
 
 
 @app.get("/healthz")
-async def health():
+async def health() -> dict[str, str]:
     """Liveness probe endpoint."""
     return {"status": "ok"}
 
 
 @app.get("/readyz")
-async def ready():
+async def ready() -> dict[str, str]:
     """Readiness probe endpoint — indicates Kafka consumer is connected."""
     return {"status": "ready", "kafka_topic": config.metrics_topic}
 

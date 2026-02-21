@@ -26,7 +26,7 @@ class TestRecordMetricEvent:
         record_metric_event(payload)
 
     def test_handles_missing_fields_with_defaults(self):
-        payload = {}
+        payload: dict[str, object] = {}
         # Should not raise — uses defaults for all fields
         record_metric_event(payload)
 

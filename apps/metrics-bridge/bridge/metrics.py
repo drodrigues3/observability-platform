@@ -1,3 +1,5 @@
+from typing import Any
+
 from prometheus_client import Counter, Histogram, Gauge
 
 # Request latency histogram with SLO-friendly buckets (ms)
@@ -28,7 +30,7 @@ ACTIVE_SERVICES = Gauge(
 )
 
 
-def record_metric_event(payload: dict) -> None:
+def record_metric_event(payload: dict[str, Any]) -> None:
     """Update Prometheus metrics from a raw Kafka metric event payload."""
     service = payload.get("service", "unknown")
     endpoint = payload.get("endpoint", "/")

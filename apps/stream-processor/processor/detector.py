@@ -19,7 +19,7 @@ class AnomalyDetector:
             HighErrorRateRule(config.error_rate_threshold),
             TrafficDropRule(config.traffic_drop_threshold, config.window_size_seconds),
         ]
-        self._consecutive_violations: dict = {}
+        self._consecutive_violations: dict[str, int] = {}
         self._required_consecutive = config.consecutive_windows_for_alert
 
     def record(self, service: str, latency_ms: float, error: bool) -> None:

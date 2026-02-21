@@ -23,7 +23,7 @@ class MetricsBridgeConsumer:
         })
         self._running = False
         self._thread: threading.Thread | None = None
-        self._seen_services: set = set()
+        self._seen_services: set[str] = set()
 
     def start(self) -> None:
         self._consumer.subscribe([self._config.metrics_topic])
@@ -37,12 +37,16 @@ class MetricsBridgeConsumer:
             msg = self._consumer.poll(timeout=1.0)
             if msg is None:
                 continue
-            if msg.error():
-                if msg.error().code() != KafkaError._PARTITION_EOF:
-                    logger.error("Consumer error", error=msg.error())
+            err = msg.error()
+            if err:
+                if err.code() != KafkaError._PARTITION_EOF:  # type: ignore[attr-defined]
+                    logger.error("Consumer error", error=err)
                 continue
             try:
-                payload = json.loads(msg.value().decode("utf-8"))
+                raw = msg.value()
+                if raw is None:
+                    continue
+                payload = json.loads(raw.decode("utf-8"))
                 record_metric_event(payload)
 
                 service = payload.get("service")

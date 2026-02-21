@@ -1,5 +1,7 @@
 import signal
 import sys
+from types import FrameType
+from typing import Optional
 
 import structlog
 
@@ -24,7 +26,7 @@ def main() -> None:
     config = Config()
     processor = StreamProcessor(config)
 
-    def handle_signal(signum, frame) -> None:
+    def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
         logger.info("Received shutdown signal", signal=signum)
         processor.stop()
 
